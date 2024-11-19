@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: homework
+  namespace: homework
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.27
+      env:
+        - name: NGINX_ENVSUBST_TEMPLATE_DIR
+          value: "/etc/nginx/templates"
+        - name: NGINX_ENVSUBST_OUTPUT_DIR
+          value: "/etc/nginx/conf.d"
+        - name: NGINX_PORT
+          value: "8000"
+        - name: NGINX_ROOT_DIR
+          value: "/homework"
+      lifecycle:
+        preStop:
+          exec:
+            command: [ "sh", "-c", "rm -rf /homework/index.html" ]
+      volumeMounts:
+        - mountPath: /homework
+          name: super-volume
+        - mountPath: /etc/nginx/templates/
+          name: super-volume
+          subPath: nginx-templates
+  initContainers:
+    - name: init-myservice
+      image: busybox:1.28
+      command: [ 'sh', '-c', "wget https://ya.ru -P /init" ]
+      volumeMounts:
+        - mountPath: /init
+          name: super-volume
+    - name: web-server-config
+      image: busybox:1.28
+      command: [ 'sh', '-c', 'echo "server {listen \${NGINX_PORT}; location / {root \${NGINX_ROOT_DIR}; index index.html index.htm;}}" > /nginx-templates/default.conf.template' ]
+      volumeMounts:
+        - mountPath: /nginx-templates
+          name: super-volume
+          subPath: nginx-templates
+  volumes:
+    - name: super-volume
+      emptyDir:
+        sizeLimit: 5Mi
+
